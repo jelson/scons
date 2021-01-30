@@ -282,6 +282,18 @@ LibSymlinksAction = SCons.Action.Action(LibSymlinksActionFunction, LibSymlinksSt
 ##########################################################################
 #  Create common executable program / library / object builders
 
+def prog_emitter(target, source, env):
+    if 'mapfile' in env:
+        target.append(env['mapfile'])
+
+    return target, source
+
+def prog_generator(source, target, env, for_signature):
+    cmd = SCons.Util.CLVar(['$LINKCOM'])
+    if 'mapfile' in env:
+        cmd.append(f"-Wl,-Map={env['mapfile']},--cref")
+    return [cmd]
+
 def createProgBuilder(env):
     """This is a utility function that creates the Program
     Builder in an Environment if it is not there already.
@@ -293,8 +305,11 @@ def createProgBuilder(env):
         program = env['BUILDERS']['Program']
     except KeyError:
         import SCons.Defaults
-        program = SCons.Builder.Builder(action=SCons.Defaults.LinkAction,
-                                        emitter='$PROGEMITTER',
+        program = SCons.Builder.Builder(action=SCons.Action.Action(
+                                            prog_generator,
+                                            '$LINKCOMSTR',
+                                            generator=1),
+                                        emitter=prog_emitter,
                                         prefix='$PROGPREFIX',
                                         suffix='$PROGSUFFIX',
                                         src_suffix='$OBJSUFFIX',
